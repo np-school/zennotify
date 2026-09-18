@@ -744,6 +744,17 @@
   function fmtTime(ts){
     return new Date(ts).toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
   }
+  // บาง field (เช่น field4/field5) อาจไม่ได้อัปเดตพร้อมกับ field อื่นทุกครั้ง
+  // ฟังก์ชันนี้ย้อนหาค่าล่าสุดที่ "ไม่ว่าง" ของ field นั้น ๆ โดยเฉพาะ
+  function lastFieldValue(feeds, key){
+    for(var i = feeds.length - 1; i >= 0; i--){
+      var v = feeds[i][key];
+      if(v !== null && v !== undefined && v !== ''){
+        return { value: v, created_at: feeds[i].created_at };
+      }
+    }
+    return { value: null, created_at: null };
+  }
   function setChip(el, textEl, state, texts){
     el.classList.remove('ok','warn','danger');
     el.classList.add(state);
@@ -775,7 +786,7 @@
       window.__notifyLatest = latest;
 
       // Gas
-      var gas = parseFloat(latest.field1);
+      var gas = parseFloat(lastFieldValue(feeds, 'field1').value);
       document.getElementById('gasVal').textContent = isNaN(gas) ? '–' : Math.round(gas);
       var gasCard = document.getElementById('gasCard');
       var gasChip = document.getElementById('gasChip');
@@ -795,13 +806,13 @@
       }
 
       // Temp / Humidity
-      var temp = parseFloat(latest.field2);
+      var temp = parseFloat(lastFieldValue(feeds, 'field2').value);
       document.getElementById('tempVal').textContent = isNaN(temp) ? '–' : temp.toFixed(1);
-      var hum = parseFloat(latest.field3);
+      var hum = parseFloat(lastFieldValue(feeds, 'field3').value);
       document.getElementById('humVal').textContent = isNaN(hum) ? '–' : hum.toFixed(1);
 
       // PIR / people + distance
-      var pir = parseFloat(latest.field4);
+      var pir = parseFloat(lastFieldValue(feeds, 'field4').value);
       var pirChip = document.getElementById('pirChip');
       var pirChipText = document.getElementById('pirChipText');
       if(!isNaN(pir) && pir > 0){
@@ -812,7 +823,7 @@
         pirChip.classList.remove('ok','warn','danger');
         pirChipText.textContent = 'ไม่มีการเคลื่อนไหว';
       }
-      var dist = parseFloat(latest.field5);
+      var dist = parseFloat(lastFieldValue(feeds, 'field5').value);
       document.getElementById('distVal').textContent = isNaN(dist) ? '–' : Math.round(dist);
 
       // Charts
@@ -867,11 +878,12 @@
     var feeds = window.__notifyFeeds || [];
     var latest = window.__notifyLatest || feeds[feeds.length-1];
     var values = vals(feeds, m.key);
-    var current = latest ? parseFloat(latest[m.key]) : NaN;
+    var currentInfo = lastFieldValue(feeds, m.key);
+    var current = parseFloat(currentInfo.value);
 
     document.getElementById('sheetTitle').textContent = m.title;
-    document.getElementById('sheetSubtitle').textContent = latest && latest.created_at
-      ? 'อัปเดตล่าสุด ' + fmtTime(latest.created_at) : 'ข้อมูลล่าสุด';
+    document.getElementById('sheetSubtitle').textContent = currentInfo.created_at
+      ? 'อัปเดตล่าสุด ' + fmtTime(currentInfo.created_at) : 'ข้อมูลล่าสุด';
     document.getElementById('sheetCurrent').textContent = fmtMetric(current, m.key);
     document.getElementById('sheetUnit').textContent = m.key === 'field4' ? '' : m.unit();
     document.getElementById('sheetStatus').textContent = m.key === 'field4'
@@ -882,7 +894,7 @@
     var noteText = m.note;
     if(id === 'pirCard'){
       var distValues = vals(feeds, 'field5');
-      var distCurrent = latest ? parseFloat(latest.field5) : NaN;
+      var distCurrent = parseFloat(lastFieldValue(feeds, 'field5').value);
       if(distValues.length){
         var dMax = Math.max.apply(null, distValues), dMin = Math.min.apply(null, distValues);
         noteText += ' — ระยะล่าสุด ' + (isNaN(distCurrent) ? '–' : Math.round(distCurrent)) + ' cm (สูงสุด ' + Math.round(dMax) + ' / ต่ำสุด ' + Math.round(dMin) + ' cm)';
