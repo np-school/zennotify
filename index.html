@@ -328,6 +328,7 @@
 
   .sheet{
     position:fixed; left:0; right:0; bottom:0; z-index:90;
+    max-width:520px; margin:0 auto;
     max-height:88vh; overflow-y:auto;
     background:var(--surface);
     border-radius:24px 24px 0 0;
@@ -336,6 +337,8 @@
     transform:translateY(110%);
     transition:transform .25s ease;
   }
+  @media (min-width:700px){ .sheet{max-width:700px;} }
+  @media (min-width:1024px){ .sheet{max-width:920px;} }
   .sheet.open{transform:translateY(0);}
   .sheet-handle{width:40px; height:5px; border-radius:99px; background:#D9DEE8; margin:0 auto 14px;}
 
@@ -374,7 +377,7 @@
     display:inline-flex; align-items:center; gap:5px; margin-left:auto;
     padding:5px 9px; border-radius:99px; background:#DDF8E8; color:#0B9A4A; font-size:10.5px; font-weight:800;
   }
-  .sheet-chart{height:170px; margin-top:10px;}
+  .sheet-chart{height:170px; margin-top:10px; position:relative;}
   .sheet-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px;}
   .sheet-stat{padding:10px 8px; border-radius:13px; background:#fff; border:1px solid #EDF0F5; text-align:center;}
   .sheet-stat span{display:block; color:#98A0AF; font-size:9.5px; margin-bottom:3px;}
@@ -746,10 +749,20 @@
   }
   // บาง field (เช่น field4/field5) อาจไม่ได้อัปเดตพร้อมกับ field อื่นทุกครั้ง
   // ฟังก์ชันนี้ย้อนหาค่าล่าสุดที่ "ไม่ว่าง" ของ field นั้น ๆ โดยเฉพาะ
+  // ค่าที่ "เป็นไปไม่ได้ในทางฟิสิกส์" จากเซนเซอร์อ่านพลาด/หลุดการเชื่อมต่อชั่วขณะ
+  // ให้ถือว่าเป็นค่าว่าง (null) แทนที่จะพล็อตลงกราฟ/รวมในสถิติ
+  function isPlausible(key, v){
+    if(isNaN(v)) return false;
+    if(key === 'field2') return v > -20 && v < 90;   // อุณหภูมิ °C
+    if(key === 'field3') return v > 0 && v <= 100;   // ความชื้น %RH ต้อง > 0
+    if(key === 'field5') return v > 0;               // ระยะ cm ต้อง > 0
+    return true; // field1 (แก๊ส), field4 (PIR) ไม่จำกัดช่วง
+  }
+
   function lastFieldValue(feeds, key){
     for(var i = feeds.length - 1; i >= 0; i--){
       var v = feeds[i][key];
-      if(v !== null && v !== undefined && v !== ''){
+      if(v !== null && v !== undefined && v !== '' && isPlausible(key, parseFloat(v))){
         return { value: v, created_at: feeds[i].created_at };
       }
     }
@@ -771,7 +784,7 @@
   }
 
   function fetchData(){
-    var url = 'https://api.thingspeak.com/channels/' + encodeURIComponent(cfg.channel) + '/feeds.json?results=60';
+    var url = 'https://api.thingspeak.com/channels/' + encodeURIComponent(cfg.channel) + '/feeds.json?results=200';
     if(cfg.apiKey){ url += '&api_key=' + encodeURIComponent(cfg.apiKey); }
 
     fetch(url).then(function(res){
@@ -829,16 +842,16 @@
       // Charts
       var labels = feeds.map(function(f){ return fmtTime(f.created_at); });
       gasChart.data.labels = labels;
-      gasChart.data.datasets[0].data = feeds.map(function(f){ return parseFloat(f.field1); });
+      gasChart.data.datasets[0].data = feeds.map(function(f){ var v = parseFloat(f.field1); return isPlausible('field1', v) ? v : null; });
       gasChart.data.datasets[1].data = feeds.map(function(){ return cfg.threshold; });
       gasChart.update('none');
 
       tempChart.data.labels = labels;
-      tempChart.data.datasets[0].data = feeds.map(function(f){ return parseFloat(f.field2); });
+      tempChart.data.datasets[0].data = feeds.map(function(f){ var v = parseFloat(f.field2); return isPlausible('field2', v) ? v : null; });
       tempChart.update('none');
 
       humChart.data.labels = labels;
-      humChart.data.datasets[0].data = feeds.map(function(f){ return parseFloat(f.field3); });
+      humChart.data.datasets[0].data = feeds.map(function(f){ var v = parseFloat(f.field3); return isPlausible('field3', v) ? v : null; });
       humChart.update('none');
 
       document.getElementById('updatedText').textContent = 'อัปเดตล่าสุด ' + fmtTime(latest.created_at);
@@ -865,7 +878,7 @@
     pirCard:{ title:'รายละเอียดคน / ระยะ', key:'field4', unit:function(){ return 'สถานะ'; }, color:'#12A89B', icon:'👥', note:'ตรวจสอบการเคลื่อนไหว/การมีคนภายในห้อง และระยะที่ตรวจจับได้ (field5)' }
   };
   function vals(feeds,key){
-    return (feeds||[]).map(function(f){ return parseFloat(f[key]); }).filter(function(v){ return !isNaN(v); });
+    return (feeds||[]).map(function(f){ return parseFloat(f[key]); }).filter(function(v){ return isPlausible(key, v); });
   }
   function fmtMetric(v,key){
     if(v === null || v === undefined || isNaN(v)) return '–';
@@ -914,7 +927,7 @@
 
     if(sheetChart){ sheetChart.destroy(); sheetChart = null; }
     var labels = feeds.map(function(f){ return fmtTime(f.created_at); });
-    var data = feeds.map(function(f){ var v = parseFloat(f[m.key]); return isNaN(v) ? null : v; });
+    var data = feeds.map(function(f){ var v = parseFloat(f[m.key]); return isPlausible(m.key, v) ? v : null; });
     sheetChart = new Chart(document.getElementById('sheetChart'), {
       type: m.key === 'field4' ? 'bar' : 'line',
       data:{ labels:labels, datasets:[{
@@ -933,6 +946,9 @@
     });
 
     openSheetEl(metricSheet);
+    if(sheetChart){
+      setTimeout(function(){ sheetChart.resize(); }, 260);
+    }
   }
 
   ['gasCard','humCard','tempCard','pirCard'].forEach(function(id){
