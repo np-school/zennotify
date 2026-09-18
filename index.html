@@ -215,6 +215,8 @@
     display:flex; align-items:baseline; gap:4px; font-variant-numeric:tabular-nums; color:#fff;
   }
   .c-value .unit{font-size:11px; font-weight:600; color:rgba(255,255,255,.82);}
+  .c-sub{position:relative; z-index:2; font-size:12px; font-weight:600; color:rgba(255,255,255,.85); margin:-4px 0 8px;}
+  .c-sub .unit{font-size:11px; font-weight:600; color:rgba(255,255,255,.7);}
   .chip{
     position:relative; z-index:2;
     display:inline-flex; align-items:center; gap:5px; font-size:9.5px; font-weight:800;
@@ -455,8 +457,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
       </div>
-      <p class="c-label">คนภายในห้อง</p>
+      <p class="c-label">คน / ระยะ</p>
       <div class="c-value"><span id="pirVal">–</span></div>
+      <div class="c-sub"><span id="distVal">–</span><span class="unit"> cm</span></div>
       <span class="chip" id="pirChip"><span class="cdot"></span><span id="pirChipText">–</span></span>
     </button>
   </section>
@@ -797,7 +800,7 @@
       var hum = parseFloat(latest.field3);
       document.getElementById('humVal').textContent = isNaN(hum) ? '–' : hum.toFixed(1);
 
-      // PIR
+      // PIR / people + distance
       var pir = parseFloat(latest.field4);
       var pirChip = document.getElementById('pirChip');
       var pirChipText = document.getElementById('pirChipText');
@@ -809,6 +812,8 @@
         pirChip.classList.remove('ok','warn','danger');
         pirChipText.textContent = 'ไม่มีการเคลื่อนไหว';
       }
+      var dist = parseFloat(latest.field5);
+      document.getElementById('distVal').textContent = isNaN(dist) ? '–' : Math.round(dist);
 
       // Charts
       var labels = feeds.map(function(f){ return fmtTime(f.created_at); });
@@ -846,7 +851,7 @@
     gasCard:{ title:'รายละเอียดแก๊ส / ควัน', key:'field1', unit:function(){ return document.getElementById('gasUnit').textContent || 'ppm'; }, color:'#F2672C', icon:'🔥', note:'ติดตามระดับแก๊ส/ควันและระดับเตือนของระบบ' },
     humCard:{ title:'รายละเอียดความชื้น', key:'field3', unit:function(){ return '%RH'; }, color:'#168FE7', icon:'💧', note:'แสดงแนวโน้มความชื้นสัมพัทธ์จากข้อมูลล่าสุด' },
     tempCard:{ title:'รายละเอียดอุณหภูมิ', key:'field2', unit:function(){ return '°C'; }, color:'#6558DB', icon:'🌡️', note:'แสดงแนวโน้มอุณหภูมิจากข้อมูลล่าสุด' },
-    pirCard:{ title:'รายละเอียดคนภายในห้อง', key:'field4', unit:function(){ return 'สถานะ'; }, color:'#12A89B', icon:'👥', note:'ตรวจสอบการเคลื่อนไหว/การมีคนภายในห้อง' }
+    pirCard:{ title:'รายละเอียดคน / ระยะ', key:'field4', unit:function(){ return 'สถานะ'; }, color:'#12A89B', icon:'👥', note:'ตรวจสอบการเคลื่อนไหว/การมีคนภายในห้อง และระยะที่ตรวจจับได้ (field5)' }
   };
   function vals(feeds,key){
     return (feeds||[]).map(function(f){ return parseFloat(f[key]); }).filter(function(v){ return !isNaN(v); });
@@ -873,7 +878,17 @@
       ? (current > 0 ? 'ตรวจพบการเคลื่อนไหว' : 'ไม่มีการเคลื่อนไหว') : 'ปกติ';
     document.getElementById('sheetIcon').style.background = m.color;
     document.getElementById('sheetIcon').textContent = m.icon;
-    document.getElementById('sheetNote').textContent = m.note;
+
+    var noteText = m.note;
+    if(id === 'pirCard'){
+      var distValues = vals(feeds, 'field5');
+      var distCurrent = latest ? parseFloat(latest.field5) : NaN;
+      if(distValues.length){
+        var dMax = Math.max.apply(null, distValues), dMin = Math.min.apply(null, distValues);
+        noteText += ' — ระยะล่าสุด ' + (isNaN(distCurrent) ? '–' : Math.round(distCurrent)) + ' cm (สูงสุด ' + Math.round(dMax) + ' / ต่ำสุด ' + Math.round(dMin) + ' cm)';
+      }
+    }
+    document.getElementById('sheetNote').textContent = noteText;
 
     if(values.length){
       var max = Math.max.apply(null, values), min = Math.min.apply(null, values);
