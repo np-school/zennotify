@@ -768,7 +768,7 @@
       return res.json();
     }).then(function(data){
       setConn(true);
-      var feeds = (data.feeds || []).filter(function(f){ return f.field1 !== null; });
+      var feeds = data.feeds || [];
       if(!feeds.length) return;
       var latest = feeds[feeds.length - 1];
       window.__notifyFeeds = feeds;
