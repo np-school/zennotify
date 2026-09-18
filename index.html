@@ -47,7 +47,7 @@
   }
   button,input{font-family:inherit; touch-action:manipulation;}
   img{max-width:100%; display:block;}
-  canvas{max-width:100% !important; width:100% !important; display:block;}
+  canvas{max-width:100% !important; width:100% !important; height:100% !important; display:block;}
 
   .wrap{
     max-width:520px;
@@ -269,7 +269,7 @@
   .legend-mini{display:flex; gap:10px; font-size:10px; color:var(--ink-soft); font-weight:700; flex-shrink:0;}
   .legend-mini span{display:inline-flex; align-items:center; gap:4px; white-space:nowrap;}
   .legend-mini i{width:8px; height:8px; border-radius:3px; display:inline-block;}
-  .chart-box{height:200px; position:relative;}
+  .chart-box{height:200px; position:relative; overflow:hidden;}
 
   .grid-2{display:grid; grid-template-columns:1fr; gap:12px; min-width:0;}
   @media (min-width:700px){
@@ -377,7 +377,7 @@
     display:inline-flex; align-items:center; gap:5px; margin-left:auto;
     padding:5px 9px; border-radius:99px; background:#DDF8E8; color:#0B9A4A; font-size:10.5px; font-weight:800;
   }
-  .sheet-chart{height:170px; margin-top:10px; position:relative;}
+  .sheet-chart{height:170px; margin-top:10px; position:relative; overflow:hidden;}
   .sheet-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px;}
   .sheet-stat{padding:10px 8px; border-radius:13px; background:#fff; border:1px solid #EDF0F5; text-align:center;}
   .sheet-stat span{display:block; color:#98A0AF; font-size:9.5px; margin-bottom:3px;}
